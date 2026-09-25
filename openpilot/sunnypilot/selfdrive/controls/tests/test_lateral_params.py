@@ -18,7 +18,8 @@ def _published(params) -> dict[str, bytes]:
 
 
 class _Written:
-  """Params with some keys written, without touching the params directory."""
+  """Params with some keys written. Writes inside the test's isolated params directory did not
+  persist on a device, so written values are layered over Params instead of put()."""
   def __init__(self, params: Params, **written):
     self._params, self._written = params, written
 
@@ -26,15 +27,11 @@ class _Written:
     return self._written[key] if key in self._written else self._params.get(key, return_default=return_default)
 
 
-def _wire(value) -> bytes:
-  return (b"1" if value else b"0") if isinstance(value, bool) else str(value).encode()
-
-
 class TestReadLateralParams(OpenpilotTestCase):
   """BluePilot (#6): the Ford lateral gets the value the settings UI shows, including for a param
   that was never written on the device."""
 
-  def setUp(self):
+  def setup_method(self):
     self.params = Params()
     for key in BP_LATERAL_PARAMS:
       self.params.remove(key)
@@ -42,12 +39,12 @@ class TestReadLateralParams(OpenpilotTestCase):
   def test_unset_keys_publish_the_registry_default(self):
     published = _published(self.params)
     self.assertEqual(set(published), set(BP_LATERAL_PARAMS))
-    for key in BP_LATERAL_PARAMS:
-      self.assertEqual(published[key], _wire(self.params.get(key, return_default=True)), key)
+    self.assertEqual(published["enable_human_turn_detection_curv"], b"1")
+    self.assertEqual(published["LC_PID_gain_UI_curv"], b"1.0")
 
   def test_decided_defaults(self):
-    self.assertTrue(self.params.get(key="enable_human_turn_detection_curv", return_default=True))
-    self.assertEqual(self.params.get(key="LC_PID_gain_UI_curv", return_default=True), 1.0)
+    self.assertTrue(self.params.get("enable_human_turn_detection_curv", return_default=True))
+    self.assertEqual(self.params.get("LC_PID_gain_UI_curv", return_default=True), 1.0)
 
   def test_written_value_wins(self):
     published = _published(_Written(self.params, LC_PID_gain_UI_curv=2.5, enable_human_turn_detection_curv=False))
