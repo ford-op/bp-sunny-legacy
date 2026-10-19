@@ -46,18 +46,14 @@ jobs:
         set -euo pipefail
         git fetch --no-tags origin "$INTEGRATION"
         integration=$(git rev-parse "origin/$INTEGRATION")
-        mirror=
-        if git ls-remote --exit-code --heads origin "$MIRROR" >/dev/null; then
-          git fetch --no-tags origin "$MIRROR"
-          mirror=$(git rev-parse "origin/$MIRROR")
-        fi
+        mirror=$(git rev-parse -q --verify "refs/remotes/origin/$MIRROR" || true)  # empty on the first run; the checkout fetched every branch
         git fetch --no-tags "$UPSTREAM_URL" master
         up=$(git rev-parse FETCH_HEAD)
 
         # 1. Fast-forward the mirror (creating it on the first run), or stop and say why.
         if [ "$mirror" != "$up" ]; then
           if [ -n "$mirror" ] && ! git merge-base --is-ancestor "$mirror" "$up"; then
-            title="$MIRROR is not a mirror of upstream"
+            title="$MIRROR is not a mirror"
             {
               echo "The weekly sync stopped: \`$MIRROR\` is not a fast-forward of sunnypilot \`master\` ($up)."
               echo
@@ -85,24 +81,33 @@ jobs:
         # 3. Open or refresh the one sync PR (head = the mirror itself).
         base=$(git merge-base "$up" "$integration")
         conflicts=$(git merge-tree --write-tree --name-only --no-messages "$integration" "$up" | tail -n +2 | sed 's/^/- /' || true)
-        pin=$(git rev-parse "$up:opendbc_repo")
-        ours=$(git rev-parse "$integration:opendbc_repo")
-        # bg-clean contains sunnypilot's opendbc when the compare from it to bg-clean is "ahead" or "identical"
-        status=$(gh api "repos/$OPENDBC/compare/$pin...$OPENDBC_BRANCH" -q .status 2>/dev/null || echo missing)
-        case "$status" in ahead|identical) ready=yes ;; *) ready=no ;; esac
+        upstream_opendbc=$(git rev-parse "$up:opendbc_repo")
+        our_opendbc=$(git rev-parse "$integration:opendbc_repo")
+        # bg-clean contains sunnypilot's opendbc when the compare from it to bg-clean is "ahead" or "identical";
+        # a 404 means bg-opendbc doesn't have the commit at all yet
+        if status=$(gh api "repos/$OPENDBC/compare/$upstream_opendbc...$OPENDBC_BRANCH" -q .status 2>compare.err); then
+          case "$status" in ahead|identical) ready=yes ;; *) ready=no ;; esac
+        elif grep -q "HTTP 404" compare.err; then
+          ready=no
+        else
+          cat compare.err >&2
+          ready="unknown (the compare API failed; see the job log)"
+        fi
         {
           echo "Automated weekly sync of sunnypilot \`master\` into \`$INTEGRATION\` (#6). Upstream \`${base:0:8}..${up:0:8}\`."
           echo
           echo "**Merge with a merge commit, not squash, and don't delete the branch.** The head is \`$MIRROR\` itself; a squash leaves upstream's commits out of \`$INTEGRATION\` and the job reopens this PR every week."
           echo
           echo "### opendbc"
-          echo "sunnypilot pins opendbc \`${pin:0:8}\`; $OPENDBC \`$OPENDBC_BRANCH\` contains it: **$ready**. \`$INTEGRATION\` points at \`${ours:0:8}\`."
+          echo "sunnypilot pins opendbc \`${upstream_opendbc:0:8}\`; $OPENDBC \`$OPENDBC_BRANCH\` contains it: **$ready**. \`$INTEGRATION\` points at \`${our_opendbc:0:8}\`."
           if [ "$ready" = no ]; then
-            echo "The bg-opendbc sync that brings in \`${pin:0:8}\` lands first."
+            echo "The $OPENDBC sync that brings in \`${upstream_opendbc:0:8}\` lands first."
           fi
           echo
           echo "### Upstream commits"
           git log -n 200 --format='- %h %s' "$integration..$up"
+          more=$(( $(git rev-list --count "$integration..$up") - 200 ))
+          if [ "$more" -gt 0 ]; then echo "- …and $more more"; fi
           echo
           echo "### Files upstream changed that BluePilot also changes"
           overlap=$(comm -12 <(git diff --name-only "$base" "$up" | sort) <(git diff --name-only "$base" "$integration" | sort) | sed 's/^/- /')
