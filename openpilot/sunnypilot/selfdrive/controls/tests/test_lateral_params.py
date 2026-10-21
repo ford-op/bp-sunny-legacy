@@ -71,11 +71,11 @@ def _bluepilot_block(text: str) -> set[str]:
   return block
 
 
-class TestParamsKeysMatchManifest:
+class TestParamsKeysMatchManifest(OpenpilotTestCase):
   """BluePilot's params_keys.h entries are the library manifest's, both ways: every setting registered
   with its type and default, and nothing the manifest dropped."""
 
   def test_block_matches_manifest(self):
     block = _bluepilot_block(PARAMS_KEYS_H.read_text())
     manifest = {" ".join(line.split()) for line in params_keys_lines()}
-    assert block == manifest, "paste the lines `python -m opendbc.bluepilot_lateral.params.manifest` prints"
+    self.assertEqual(block, manifest, "paste the lines `python -m opendbc.bluepilot_lateral.params.manifest` prints")
