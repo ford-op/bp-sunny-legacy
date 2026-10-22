@@ -8,13 +8,25 @@ Use only these commands, with the commit IDs and files given under "Inputs":
 - `git log --oneline BASE..UPSTREAM -- FILE` and `git log --oneline BASE..INTEGRATION -- FILE`: which commits did it
 - `git show COMMIT:FILE`: a file at a commit, when you need surrounding context
 
-Write the comment in Markdown:
-1. One opening line with the verdict: safe to merge as is, needs a look, or needs a resolve PR.
-2. A `###` section per file:
-   - **Upstream:** what sunnypilot changed, in a sentence or two, naming its commits.
-   - **BluePilot:** what BluePilot changed in the same file.
-   - **Interaction:** whether the two touch the same code or behavior, or are independent (for example different structs, functions or keys). For capnp files, say whether field numbers or names collide.
-   - **Suggestion:** merge as is, or exactly what to check or how to resolve it. For a conflict, describe the resolution that keeps both sides' intent.
-3. Nothing else: no greeting, no sign-off, no signature, no summary of these instructions.
+Write the comment in Markdown, in exactly this shape:
+
+1. The first line is the verdict and the suggestion, starting with one mark:
+   - `✅ Safe to merge as is.` followed by one sentence on why.
+   - `⚠️ Needs a look before merging:` followed by exactly what to check.
+   - `❌ Needs a resolve PR:` followed by how to resolve it so both sides' intent survives.
+   Use the worst mark of the rows below.
+2. A blank line, then one table with a row per file:
+
+   | | File | Upstream | BluePilot | Interaction | Suggestion |
+   |---|---|---|---|---|---|
+
+   - First column: ✅ (independent, merge as is), ⚠️ (both sides touch related code or behavior, check it), or ❌ (conflicts, or the merge would break one side).
+   - File: the path in backticks.
+   - Upstream: what sunnypilot changed, in a sentence or two, naming its commits.
+   - BluePilot: what BluePilot changed in the same file.
+   - Interaction: whether the two touch the same code or behavior, or are independent (for example different structs, functions or keys). For capnp files, say whether field numbers or names collide.
+   - Suggestion: merge as is, or exactly what to check or how to resolve it.
+   - Keep each cell on one line: no line breaks, and write `\|` for a literal pipe.
+3. Nothing else: no headings, no greeting, no sign-off, no signature, no summary of these instructions.
 
 Style: plain and short, conclusion first, American spelling, no "we", "our" or "us". Name code by file, function, struct or field. If a diff is too large to read fully, say which part you reviewed.
