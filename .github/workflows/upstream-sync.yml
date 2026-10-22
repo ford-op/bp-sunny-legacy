@@ -217,7 +217,7 @@ jobs:
           awk '{print "  - " $0}' <<<"$FILES"
         } > prompt.md
         claude -p "$(cat prompt.md)" --max-turns 40 \
-          --allowedTools "Bash(git diff:*),Bash(git log:*),Bash(git show:*)" > review.md
+          --allowedTools "Bash(git diff:*),Bash(git log:*),Bash(git show:*)" < /dev/null > review.md
         [ -s review.md ] || { echo "::error::the review came back empty"; exit 1; }
         { echo "$marker"; cat review.md; } > comment.md
         gh pr comment "$PR" -R "$REPO" --body-file comment.md
