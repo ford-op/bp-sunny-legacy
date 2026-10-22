@@ -142,9 +142,15 @@ jobs:
     - run: ./tools/op.sh setup
     - name: Build openpilot
       run: scons
+    - name: Check for the replay-accepted label  # BluePilot: a PR's replay difference passes only with the label
+      id: accepted
+      if: github.event_name == 'pull_request'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: echo "label=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels --jq 'any(.[]; .name == "replay-accepted")')" >> "$GITHUB_OUTPUT"
     - name: Run replay
       timeout-minutes: ${{ contains(runner.name, 'nsc') && 2 || 20 }}
-      continue-on-error: ${{ github.ref == 'refs/heads/master' }}
+      continue-on-error: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/master-local-lateral' || steps.accepted.outputs.label == 'true' }}
       run: openpilot/selfdrive/test/process_replay/test_processes.py -j$(nproc)
     - name: Print diff
       id: print-diff
@@ -192,6 +198,19 @@ jobs:
         timeout_minutes: 2
         max_attempts: 3
         command: cd ${{ github.workspace }}/ci-artifacts && git push origin process-replay --force
+    - name: Publish BluePilot refs  # BluePilot: test_processes.py's BP_REF_CARS compare against this branch
+      if: github.repository == 'ford-op/bp-sunnypilot' && github.ref == 'refs/heads/master-local-lateral'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        fakedata=${{ github.workspace }}/openpilot/selfdrive/test/process_replay/fakedata
+        segs=$(python3 -c "from openpilot.selfdrive.test.process_replay.test_processes import segments, BP_REF_CARS; print(' '.join(s.replace('|', '_') for c, s in segments if c in BP_REF_CARS))")
+        mkdir "$RUNNER_TEMP/bp-refs" && cd "$RUNNER_TEMP/bp-refs"
+        for seg in $segs; do cp "$fakedata/${seg}"_*_${{ github.sha }}.zst .; done
+        echo "${{ github.sha }}" > ref_commit
+        git init -q -b process-replay && git add .
+        git -c user.name="GitHub Actions Bot" -c user.email="<>" commit -qm "process-replay refs for ${{ github.repository }}@${{ github.sha }}"
+        git push --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" process-replay
 
   simulator_driving:
     name: simulator driving
