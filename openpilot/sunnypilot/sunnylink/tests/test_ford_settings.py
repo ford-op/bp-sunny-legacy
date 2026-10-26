@@ -15,13 +15,22 @@ OFFROAD_ONLY = ("FordPrefLateralControl", "FordPrefSteerAngleCurvature")
 
 
 class TestFordSettingsMatchManifest(unittest.TestCase):
-  """BluePilot: sunnylink's Ford section holds every setting the lateral library reads (bp-sunnypilot #12),
-  with the manifest's limits. The disable toggle stays out: BluePilot is always on in bp-sunnypilot."""
+  """BluePilot: sunnylink's Ford section, on its own BluePilot page, holds every setting the lateral library
+  reads (bp-sunnypilot #12), with the manifest's limits. The disable toggle stays out: BluePilot is always on in
+  bp-sunnypilot."""
 
   @classmethod
   def setUpClass(cls):
-    cls.items = {i["key"]: i for i in json.loads(SETTINGS_UI.read_text())["vehicle_settings"]["ford"]["items"]}
+    cls.schema = json.loads(SETTINGS_UI.read_text())
+    page = next(p for p in cls.schema["panels"] if p["id"] == "bluepilot")
+    cls.section = next(s for s in page["sections"] if s["id"] == "ford")
+    cls.items = {i["key"]: i for i in cls.section["items"]}
     cls.manifest = {s.key: s for s in SETTINGS if s.key != "disable_BP_lat_UI"}
+
+  def test_own_page_for_fords_only(self):
+    # the sunnylink app shows decimal settings in vehicle_settings as 0.00, so they stay on their own page
+    assert "ford" not in self.schema["vehicle_settings"]
+    assert {"type": "capability", "field": "brand", "equals": "ford"} in self.section.get("visibility", [])
 
   def test_same_keys(self):
     self.assertEqual(set(self.items), set(self.manifest))
