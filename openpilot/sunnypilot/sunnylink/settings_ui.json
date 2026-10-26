@@ -3,12 +3,12 @@
   "schema_version": "1.0",
   "panels": [
     {
-      "id": "steering",
-      "label": "Steering",
-      "icon": "steering_wheel",
-      "order": 1,
+      "id": "bluepilot",
+      "label": "BluePilot",
+      "icon": "vehicle",
+      "order": 0,
       "remote_configurable": true,
-      "description": "Lateral control, lane changes, and steering behavior",
+      "description": "BluePilot's Ford lateral control",
       "sections": [
         {
           "id": "ford",
@@ -358,7 +358,17 @@
               ]
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "steering",
+      "label": "Steering",
+      "icon": "steering_wheel",
+      "order": 1,
+      "remote_configurable": true,
+      "description": "Lateral control, lane changes, and steering behavior",
+      "sections": [
         {
           "id": "mads",
           "title": "Modular Assistive Driving System (MADS)",
