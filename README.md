@@ -1,3 +1,5 @@
+> **Archived.** This was bp-sunnypilot's first home. BluePilot's sunnypilot fork is [BluePilotDev/bp-sunnypilot](https://github.com/BluePilotDev/bp-sunnypilot), moving to ford-op as `ford-op/bp-sunnypilot`; install it from the `bp-sunnypilot` branch.
+
 ![](https://user-images.githubusercontent.com/47793918/233812617-beab2e71-57b9-479e-8bff-c3931347ca40.png)
 
 ## 🌞 What is sunnypilot?
@@ -72,3 +74,4 @@ By becoming a sponsor, you will gain access to exclusive content, early access t
 Your continuous love and support are greatly appreciated! Enjoy 🥰
 
 <span>-</span> Jason, Founder of sunnypilot
+
